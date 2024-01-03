@@ -2,19 +2,10 @@ interface Output
     exposes [ppm]
     imports [pf.Stdout, pf.Task.{ Task }, Color.{ Color }]
 
-writeHeader = \width, height ->
-    Stdout.line "P3\n\(Num.toStr width) \(Num.toStr height)\n255"
+header = \width, height ->
+    "P3\n\(Num.toStr width) \(Num.toStr height)\n255\n"
 
-ppm : I32, I32, List Color -> Task {} a
+ppm : U32, U32, List Color -> List U8
 ppm = \width, height, data ->
-    _ <- writeHeader width height |> Task.await
-
-    Task.loop data \list ->
-        when list is
-            [] -> Task.ok (Done {})
-            [{r, g, b}, .. as rest] ->
-                _ <- Stdout.line "\(Num.toStr r) \(Num.toStr g) \(Num.toStr b)" |> Task.await
-
-                Task.ok (Step rest)
-
-
+        (Str.toUtf8 (header width height))
+        |> List.concat (List.joinMap data \{r, g, b} -> (Str.toUtf8 "\(Num.toStr r) \(Num.toStr g) \(Num.toStr b)\n"))

@@ -5,6 +5,8 @@ app "raytracer"
     }
     imports [
         pf.Stdout,
+        pf.File,
+        pf.Path.{ Path },
         pf.Task,
         pf.Task.{ Task },
         Output.{ ppm },
@@ -29,5 +31,10 @@ main =
             List.range { start: At 0, end: Before imageWidth } 
                 |> List.map \w -> getPixels w h
 
-    ppm imageWidth imageHeight pixels
+    File.writeBytes (Path.fromStr "out.ppm") (ppm imageWidth imageHeight pixels)
+        |> Task.onErr \e -> 
+            when e is 
+                FileWriteErr _ err -> Stdout.line (File.writeErrToStr err)
+
+
 
