@@ -1,6 +1,6 @@
 interface Output
     exposes [ppm]
-    imports [pf.Stdout, pf.Task.{ Task }, Color.{ Color }]
+    imports [Color.{ Color }]
 
 header = \width, height ->
     "P3\n\(Num.toStr width) \(Num.toStr height)\n255\n"
