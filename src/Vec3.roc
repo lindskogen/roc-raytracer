@@ -1,4 +1,4 @@
-interface Vec
+interface Vec3
     exposes [
         Vec3,
         zero,
@@ -13,7 +13,10 @@ interface Vec
         div,
         dotProduct,
         crossProduct,
-        unit
+        unit,
+        getX,
+        getY,
+        getZ
     ]
     imports []
 
@@ -21,6 +24,15 @@ Vec3 := { x: F32, y: F32, z: F32 }
     implements [ 
         Eq { isEq: vecEquality } 
     ]
+
+getX: Vec3 -> F32
+getX = \@Vec3 v -> v.x
+
+getY: Vec3 -> F32
+getY = \@Vec3 v -> v.y
+
+getZ: Vec3 -> F32
+getZ = \@Vec3 v -> v.z
 
 floatEq: F32, F32 -> Bool
 floatEq = \a, b ->
