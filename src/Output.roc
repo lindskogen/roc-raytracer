@@ -7,5 +7,5 @@ header = \width, height ->
 
 ppm : U32, U32, List Color -> List U8
 ppm = \width, height, data ->
-        (Str.toUtf8 (header width height))
-        |> List.concat (List.joinMap data \{r, g, b} -> (Str.toUtf8 "\(Num.toStr r) \(Num.toStr g) \(Num.toStr b)\n"))
+    (Str.toUtf8 (header width height))
+    |> List.concat (List.joinMap data \{ r, g, b } -> Str.toUtf8 "\(Num.toStr r) \(Num.toStr g) \(Num.toStr b)\n")
