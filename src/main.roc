@@ -5,38 +5,29 @@ app "raytracer"
     }
     imports [
         pf.Stdout,
+        pf.Task,
         pf.Task.{ Task },
+        Output.{ ppm },
+        Color.{ Color }
     ]
     provides [main] to pf
 
 imageWidth = 256
 imageHeight = 256
 
+getPixels: Num a, Num a -> Color
+getPixels = \w, h ->
+    { r: 255 * ((Num.toF32 w) / (imageWidth - 1)) |> Num.floor |> Num.toU8,
+      g: 255 * ((Num.toF32 h) / (imageHeight - 1)) |> Num.floor |> Num.toU8,
+      b: 0u8
+    }
+
+
 main =
-    _ <- Stdout.line
-            "P3\n\(Num.toStr imageWidth) \(Num.toStr imageHeight)\n255"
-        |> Task.attempt
+    pixels = List.range { start: At 0, end: Before imageHeight } 
+        |> List.joinMap \h -> 
+            List.range { start: At 0, end: Before imageWidth } 
+                |> List.map \w -> getPixels w h
 
-    _ <- Task.loop
-            0f32
-            \height ->
-                _ <- Task.loop 0f32 \width ->
-                        r = 255 * ((Num.toF32 width) / (imageWidth - 1)) |> Num.floor
-                        g = 255 * ((Num.toF32 height) / (imageHeight - 1)) |> Num.floor
-                        b = 0
-
-                        _ <- Stdout.line "\(Num.toStr r) \(Num.toStr g) \(Num.toStr b)" |> Task.attempt
-
-                        if width < (imageWidth - 1) then
-                            Task.ok (Step (width + 1))
-                        else
-                            Task.ok (Done width)
-                    |> Task.attempt
-                if height < (imageHeight - 1) then
-                    Task.ok (Step (height + 1))
-                else
-                    Task.ok (Done height)
-        |> Task.attempt
-
-    Task.ok {}
+    ppm imageWidth imageHeight pixels
 
