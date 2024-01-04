@@ -9,6 +9,7 @@ interface Vec3
         sub,
         mul,
         len,
+        lenSquared,
         scale,
         div,
         dotProduct,
@@ -80,9 +81,15 @@ mul = \@Vec3 u, @Vec3 v ->
 
 expect mul (new 2.0 3.0 4.0) (new 5.0 6.0 7.0) == (new 10.0 18.0 28.0)
 
+lenSquared : Vec3 -> F32
+lenSquared = \@Vec3 v ->
+    v.x * v.x + v.y * v.y + v.z * v.z
+
+expect floatEq (lenSquared (new 3.0 4.0 5.0)) 50
+
 len : Vec3 -> F32
-len = \@Vec3 v ->
-    Num.sqrt (v.x * v.x + v.y * v.y + v.z * v.z)
+len = \v ->
+    Num.sqrt (lenSquared v)
 
 expect
     a = len (new 3.0 4.0 5.0)
