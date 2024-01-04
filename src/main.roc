@@ -53,7 +53,7 @@ world = [
 
 rayColor : Ray -> Color
 rayColor = \r ->
-    when HittableList.hit world r 0.0 infinity is
+    when HittableList.hit world r { min: 0.0, max: infinity } is
         Hit rec ->
             Vec3.add rec.normal Vec3.one |> Vec3.scale 0.5 |> Color.fromVec3
 

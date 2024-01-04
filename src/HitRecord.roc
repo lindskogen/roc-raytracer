@@ -4,9 +4,9 @@ interface HitRecord
         HitTest,
         new,
     ]
-    imports [Vec3.{ Vec3 }, Ray.{ Ray }]
+    imports [Vec3.{ Vec3 }, Range.{ Range }, Ray.{ Ray }]
 
-HitTest a: a, Ray, F32, F32 -> [Hit HitRecord, Miss]
+HitTest a: a, Ray, Range -> [Hit HitRecord, Miss]
 
 HitRecord : { p: Vec3, normal: Vec3, t: F32, facing: [Front, Back] }
 
