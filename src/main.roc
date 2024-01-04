@@ -13,8 +13,11 @@ app "raytracer"
         Color.{ Color },
         Vec3.{ Vec3 },
         Ray.{ Ray },
+        HittableList.{ HittableList },
     ]
     provides [main] to pf
+
+infinity = Num.maxF32
 
 aspectRatio = 16.0 / 9.0f32
 imageWidth = 400
@@ -42,31 +45,24 @@ viewportUpperLeft =
 
 pixel00Loc = Vec3.add viewportUpperLeft (Vec3.add pixelDeltaU pixelDeltaV |> Vec3.scale 0.5)
 
+world: HittableList
+world = [
+    { center: (Vec3.new 0.0 0.0 -1.0), radius: 0.5 },
+    { center: (Vec3.new 0.0 -100.5 -1.0), radius: 100.0 }
+]
+
 rayColor : Ray -> Color
 rayColor = \r ->
-    when hitSphere (Vec3.new 0.0 0.0 -1.0) 0.5 r is
-        Hit t ->
-            n = Vec3.sub (Ray.at r t) (Vec3.new 0.0 0.0 -1.0) |> Vec3.unit
-            Vec3.scale (Vec3.new (Vec3.getX n + 1) (Vec3.getY n + 1) (Vec3.getZ n + 1)) 0.5 |> Color.fromVec3
+    when HittableList.hit world r 0.0 infinity is
+        Hit rec ->
+            Vec3.add rec.normal Vec3.one |> Vec3.scale 0.5 |> Color.fromVec3
 
-        NoHit ->
+        Miss ->
             dir = Vec3.unit r.direction
             a = 0.5 * ((Vec3.getY dir) + 1.0)
 
             Vec3.scale Vec3.one (1.0 - a) |> Vec3.add (Vec3.scale (Vec3.new 0.5 0.7 1.0) a) |> Color.fromVec3
 
-hitSphere : Vec3, F32, Ray -> [NoHit, Hit F32]
-hitSphere = \center, radius, r ->
-    oc = Vec3.sub r.origin center
-    a = Vec3.lenSquared r.direction
-    halfB = Vec3.dotProduct oc r.direction
-    c = (Vec3.lenSquared oc) - (radius * radius)
-    discriminant = halfB * halfB - a * c
-
-    if discriminant < 0 then
-        NoHit
-    else
-        Hit ((-halfB - Num.sqrt discriminant) / a)
 
 main =
 
