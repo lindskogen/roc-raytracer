@@ -58,15 +58,15 @@ rayColor = \r ->
 hitSphere : Vec3, F32, Ray -> [NoHit, Hit F32]
 hitSphere = \center, radius, r ->
     oc = Vec3.sub r.origin center
-    a = Vec3.dotProduct r.direction r.direction
-    b = 2.0 * Vec3.dotProduct oc r.direction
-    c = (Vec3.dotProduct oc oc) - (radius * radius)
-    discriminant = b * b - 4 * a * c
+    a = Vec3.lenSquared r.direction
+    halfB = Vec3.dotProduct oc r.direction
+    c = (Vec3.lenSquared oc) - (radius * radius)
+    discriminant = halfB * halfB - a * c
 
     if discriminant < 0 then
         NoHit
     else
-        Hit ((-b - Num.sqrt discriminant) / (2.0 * a))
+        Hit ((-halfB - Num.sqrt discriminant) / a)
 
 main =
 
