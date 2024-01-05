@@ -10,41 +10,58 @@ InternalCamera : {
     imageWidth : U32,
     samplesPerPixel : U32,
     maxDepth : U32,
+    vfov: F32,
+    lookFrom: Vec3,
+    lookAt: Vec3,
+    vup: Vec3,
     imageHeight : U32,
     center : Vec3,
     pixel00Loc : Vec3,
     pixelDeltaU : Vec3,
     pixelDeltaV : Vec3,
+    u: Vec3,
+    v: Vec3,
+    w: Vec3
 }
+
+degreesToRadians: F32 -> F32
+degreesToRadians = \d ->
+    d * Num.pi / 180.0
 
 Camera := InternalCamera
 
-init : { aspectRatio : F32, imageWidth : U32, samplesPerPixel : U32, maxDepth : U32 } -> Camera
-init = \{ aspectRatio, imageWidth, samplesPerPixel, maxDepth } ->
+init : { aspectRatio : F32, imageWidth : U32, samplesPerPixel : U32, maxDepth : U32, vfov: F32, vup: Vec3, lookFrom: Vec3, lookAt: Vec3 } -> Camera
+init = \{ aspectRatio, imageWidth, samplesPerPixel, maxDepth, vfov, lookAt, lookFrom, vup } ->
     imageHeight =
         Num.floor ((Num.toF32 imageWidth) / aspectRatio)
         |> Num.max 1
 
-    focalLength = 1.0
-    viewportHeight = 2.0
+    center = lookFrom
+    focalLength = Vec3.sub lookFrom lookAt |> Vec3.len
+    theta = degreesToRadians vfov
+    h = Num.tan (theta / 2.0)
+    viewportHeight = 2.0 * h * focalLength
     viewportWidth = viewportHeight * ((Num.toF32 imageWidth) / (Num.toF32 imageHeight))
-    center = Vec3.zero
 
-    viewportU = Vec3.new viewportWidth 0.0 0.0
-    viewportV = Vec3.new 0.0 -viewportHeight 0.0
+    w = Vec3.sub lookFrom lookAt |> Vec3.unit
+    u = Vec3.crossProduct vup w |> Vec3.unit
+    v = Vec3.crossProduct w u
+
+    viewportU = Vec3.scale u viewportWidth
+    viewportV = Vec3.scale (Vec3.neg v) viewportHeight
 
     pixelDeltaU = Vec3.div viewportU (Num.toF32 imageWidth)
     pixelDeltaV = Vec3.div viewportV (Num.toF32 imageHeight)
 
     viewportUpperLeft =
         center
-        |> Vec3.sub (Vec3.new 0.0 0.0 focalLength)
+        |> Vec3.sub (Vec3.scale w focalLength)
         |> Vec3.sub (Vec3.div viewportU 2.0)
         |> Vec3.sub (Vec3.div viewportV 2.0)
 
     pixel00Loc = Vec3.add viewportUpperLeft (Vec3.add pixelDeltaU pixelDeltaV |> Vec3.scale 0.5)
 
-    @Camera { aspectRatio, samplesPerPixel, imageHeight, maxDepth, imageWidth, center, pixel00Loc, pixelDeltaU, pixelDeltaV }
+    @Camera { aspectRatio, samplesPerPixel, vfov, imageHeight, maxDepth, imageWidth, center, pixel00Loc, pixelDeltaU, pixelDeltaV, w, u, v, vup, lookFrom, lookAt }
 
 pixelSampleSquare : Rnd.State -> (F32, F32, Rnd.State)
 pixelSampleSquare = \seed ->
