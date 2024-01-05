@@ -20,8 +20,16 @@ fromVec3 : Vec3, U32 -> Color
 fromVec3 = \v, samplesPerPixel ->
     scale = 1.0 / (Num.toF32 samplesPerPixel)
 
-    {
-        r: (Vec3.getX v * scale) |> Range.clamp Range.unit |> scaleToColor,
-        g: (Vec3.getY v * scale) |> Range.clamp Range.unit |> scaleToColor,
-        b: (Vec3.getZ v * scale) |> Range.clamp Range.unit |> scaleToColor,
-    }
+    r = Vec3.getX v |> colorCorrect scale
+    g = Vec3.getY v |> colorCorrect scale
+    b = Vec3.getZ v |> colorCorrect scale
+
+    { r, g, b }
+
+colorCorrect : F32, F32 -> U8
+colorCorrect = \v, scale ->
+    v * scale |> linearToGamma |> Range.clamp Range.unit |> scaleToColor
+
+linearToGamma : F32 -> F32
+linearToGamma = \x ->
+    Num.sqrt x

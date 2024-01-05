@@ -27,9 +27,15 @@ world = [
 main =
     initialSeed <- Rnd.initialize {} |> Task.await
 
-    camera = Camera.init { aspectRatio: (16.0 / 9.0f32), imageWidth: 400, samplesPerPixel: 100 }
+    dbg "init"
+
+    camera = Camera.init { aspectRatio: (16.0 / 9.0f32), imageWidth: 400, samplesPerPixel: 100, maxDepth: 50 }
+
+    dbg "render"
 
     (buffer, _) = Camera.render camera world initialSeed
+
+    dbg "file write"
 
     File.writeBytes (Path.fromStr "out.ppm") buffer
     |> Task.onErr \e ->

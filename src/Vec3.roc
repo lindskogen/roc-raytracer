@@ -18,8 +18,10 @@ interface Vec3
         getX,
         getY,
         getZ,
+        randomOnHemisphere,
+        randomUnit,
     ]
-    imports []
+    imports [Rnd]
 
 Vec3 := { x : F32, y : F32, z : F32 }
     implements [
@@ -129,3 +131,44 @@ unit = \v ->
     div v (len v)
 
 expect unit (new 3.0 4.0 5.0) == (new 1.0 1.0 1.0)
+
+random : Rnd.State -> { value : Vec3, state : Rnd.State }
+random = \seed ->
+    r1 = Rnd.float seed
+    r2 = Rnd.float r1.state
+    r3 = Rnd.float r2.state
+
+    { value: new r1.value r2.value r3.value, state: r3.state }
+
+randomInRange : Rnd.State, F32, F32 -> { value : Vec3, state : Rnd.State }
+randomInRange = \seed, min, max ->
+    r1 = Rnd.floatInRange seed min max
+    r2 = Rnd.floatInRange r1.state min max
+    r3 = Rnd.floatInRange r2.state min max
+
+    { value: new r1.value r2.value r3.value, state: r3.state }
+
+randomInUnitSphere : Rnd.State -> { value : Vec3, state : Rnd.State }
+randomInUnitSphere = \seed ->
+    recur = \{ value, state } ->
+        if lenSquared value < 1 then
+            { value, state }
+        else
+            recur (randomInRange state -1.0 1.0)
+
+    recur (randomInRange seed -1.0 1.0)
+
+randomOnHemisphere : Rnd.State, Vec3 -> { value : Vec3, state : Rnd.State }
+randomOnHemisphere = \seed, normal ->
+    { state, value } = randomUnit seed
+
+    if dotProduct value normal > 0.0 then
+        { value, state }
+    else
+        { value: neg value, state }
+
+randomUnit : Rnd.State -> { value : Vec3, state : Rnd.State }
+randomUnit = \seed ->
+    { value, state } = randomInUnitSphere seed
+
+    { value: unit value, state }

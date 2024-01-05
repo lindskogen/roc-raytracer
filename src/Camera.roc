@@ -9,6 +9,7 @@ InternalCamera : {
     aspectRatio : F32,
     imageWidth : U32,
     samplesPerPixel : U32,
+    maxDepth : U32,
     imageHeight : U32,
     center : Vec3,
     pixel00Loc : Vec3,
@@ -18,8 +19,8 @@ InternalCamera : {
 
 Camera := InternalCamera
 
-init : { aspectRatio : F32, imageWidth : U32, samplesPerPixel : U32 } -> Camera
-init = \{ aspectRatio, imageWidth, samplesPerPixel } ->
+init : { aspectRatio : F32, imageWidth : U32, samplesPerPixel : U32, maxDepth : U32 } -> Camera
+init = \{ aspectRatio, imageWidth, samplesPerPixel, maxDepth } ->
     imageHeight =
         Num.floor ((Num.toF32 imageWidth) / aspectRatio)
         |> Num.max 1
@@ -43,7 +44,7 @@ init = \{ aspectRatio, imageWidth, samplesPerPixel } ->
 
     pixel00Loc = Vec3.add viewportUpperLeft (Vec3.add pixelDeltaU pixelDeltaV |> Vec3.scale 0.5)
 
-    @Camera { aspectRatio, samplesPerPixel, imageHeight, imageWidth, center, pixel00Loc, pixelDeltaU, pixelDeltaV }
+    @Camera { aspectRatio, samplesPerPixel, imageHeight, maxDepth, imageWidth, center, pixel00Loc, pixelDeltaU, pixelDeltaV }
 
 pixelSampleSquare : Rnd.State -> (F32, F32, Rnd.State)
 pixelSampleSquare = \seed ->
@@ -71,14 +72,15 @@ getRay = \{ pixel00Loc, pixelDeltaU, pixelDeltaV, center }, x, y, seed ->
 
     ({ origin, direction }, newSeed)
 
-samplePixelColor : InternalCamera, U32, Vec3, U32, U32, Rnd.State, (Ray -> Vec3) -> (Vec3, Rnd.State)
+samplePixelColor : InternalCamera, U32, Vec3, U32, U32, Rnd.State, (Ray, Rnd.State -> (Vec3, Rnd.State)) -> (Vec3, Rnd.State)
 samplePixelColor = \camera, step, color, x, y, seed, getColor ->
     if step == 0 then
         (color, seed)
     else
         (ray, newSeed) = getRay camera x y seed
-        newColor = color |> Vec3.add (getColor ray)
-        samplePixelColor camera (step - 1) newColor x y newSeed getColor
+        (rayC, newSeed2) = getColor ray newSeed
+        newColor = color |> Vec3.add rayC
+        samplePixelColor camera (step - 1) newColor x y newSeed2 getColor
 
 render : Camera, HittableList, Rnd.State -> (List U8, Rnd.State)
 render = \@Camera camera, world, initialSeed ->
@@ -87,22 +89,31 @@ render = \@Camera camera, world, initialSeed ->
         |> List.walk { seed: initialSeed, list: [] } \pstate, h ->
             List.range { start: At 0, end: Before camera.imageWidth }
             |> List.walk pstate \state, w ->
-                (color, seed) = samplePixelColor camera camera.samplesPerPixel Vec3.zero w h state.seed (\ray -> rayColor ray world)
+                (color, newSeed) = samplePixelColor camera camera.samplesPerPixel Vec3.zero w h state.seed (\ray, seed -> rayColor ray camera.maxDepth world seed)
 
                 c = color |> Color.fromVec3 camera.samplesPerPixel
 
-                { seed, list: List.append state.list c }
+                { seed: newSeed, list: List.append state.list c }
 
     (ppm camera.imageWidth camera.imageHeight result.list, result.seed)
 
-rayColor : Ray, HittableList -> Vec3
-rayColor = \r, list ->
-    when HittableList.hit list r { min: 0.0, max: Num.maxF32 } is
-        Hit rec ->
-            Vec3.add rec.normal Vec3.one |> Vec3.scale 0.5
+rayColor : Ray, U32, HittableList, Rnd.State -> (Vec3, Rnd.State)
+rayColor = \r, depth, list, seed ->
+    if depth == 0 then
+        (Vec3.zero, seed)
+    else
+        when HittableList.hit list r { min: 0.001, max: Num.maxF32 } is
+            Hit rec ->
+                { value, state } = Vec3.randomUnit seed
+                direction = Vec3.add rec.normal value
+                (v, newSeed) = rayColor { origin: rec.p, direction } (depth - 1) list state
 
-        Miss ->
-            dir = Vec3.unit r.direction
-            a = 0.5 * ((Vec3.getY dir) + 1.0)
+                (v |> Vec3.scale 0.5, newSeed)
 
-            Vec3.scale Vec3.one (1.0 - a) |> Vec3.add (Vec3.scale (Vec3.new 0.5 0.7 1.0) a)
+            Miss ->
+                dir = Vec3.unit r.direction
+                a = 0.5 * ((Vec3.getY dir) + 1.0)
+
+                vec = Vec3.scale Vec3.one (1.0 - a) |> Vec3.add (Vec3.scale (Vec3.new 0.5 0.7 1.0) a)
+
+                (vec, seed)

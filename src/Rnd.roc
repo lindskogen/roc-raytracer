@@ -3,6 +3,7 @@ interface Rnd
         initialize,
         float,
         State,
+        floatInRange,
     ]
     imports [pf.Utc, pf.Task.{ Task }, rand.Random]
 
@@ -20,4 +21,10 @@ float = \seed ->
     { value, state } = (Random.u32 0 1000) seed
 
     { value: (Num.toF32 value) / 1000.0f32, state }
+
+floatInRange : State, F32, F32 -> { value : F32, state : State }
+floatInRange = \seed, min, max ->
+    { value, state } = float seed
+
+    { value: min + (max - min) * value, state }
 
