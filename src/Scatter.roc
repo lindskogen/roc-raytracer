@@ -24,3 +24,15 @@ scatter = \mat, ray, rec, seed ->
                 (Scattered { attenuation: albedo, scattered }, state)
             else
                 (Absorbed, state)
+
+        Dielectric { refractionIndex } ->
+            refractionRatio =
+                when rec.facing is
+                    Front -> 1.0 / refractionIndex
+                    Back -> refractionIndex
+
+            unitDirection = Vec3.unit ray.direction
+            refracted = Vec3.refract unitDirection rec.normal refractionRatio
+            scattered = { origin: rec.p, direction: refracted }
+
+            (Scattered { attenuation: Vec3.one, scattered }, seed)

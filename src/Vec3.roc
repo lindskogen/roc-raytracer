@@ -14,6 +14,7 @@ interface Vec3
         div,
         nearZero,
         reflect,
+        refract,
         dotProduct,
         crossProduct,
         unit,
@@ -144,7 +145,15 @@ expect unit (new 3.0 4.0 5.0) == (new 1.0 1.0 1.0)
 
 reflect : Vec3, Vec3 -> Vec3
 reflect = \v, n ->
-    Vec3.sub v (Vec3.scale n (Vec3.dotProduct v n) |> Vec3.scale 2.0)
+    sub v (scale n (dotProduct v n) |> scale 2.0)
+
+refract : Vec3, Vec3, F32 -> Vec3
+refract = \uv, n, etaiOverEtat ->
+    cosTheta = Num.min (dotProduct (neg uv) n) 1.0
+    rOutPerp = (scale n cosTheta) |> add uv |> scale etaiOverEtat
+    rOutParallel = scale n -(Num.sqrt (Num.abs (1.0 - (lenSquared rOutPerp))))
+
+    add rOutPerp rOutParallel
 
 random : Rnd.State -> { value : Vec3, state : Rnd.State }
 random = \seed ->

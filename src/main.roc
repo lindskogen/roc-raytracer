@@ -20,8 +20,8 @@ app "raytracer"
     provides [main] to pf
 
 matGround = Material.lambertian (Vec3.new 0.8 0.8 0.0)
-matCenter = Material.lambertian (Vec3.new 0.7 0.3 0.3)
-matLeft = Material.metal (Vec3.new 0.8 0.8 0.8) 0.3
+matCenter = Material.dielectric 1.5
+matLeft = Material.dielectric 1.5
 matRight = Material.metal (Vec3.new 0.8 0.6 0.2) 1.0
 
 world : HittableList
