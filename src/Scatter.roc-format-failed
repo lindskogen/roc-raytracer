@@ -34,23 +34,22 @@ scatter = \mat, ray, rec, seed ->
             unitDirection = Vec3.unit ray.direction
 
             cosTheta = Num.min 1.0 (Vec3.dotProduct (Vec3.neg unitDirection) rec.normal)
-            sinTheta = Num.sqrt (1.0 - cosTheta*cosTheta)
+            sinTheta = Num.sqrt (1.0 - cosTheta * cosTheta)
 
             cannotRefract = refractionRatio * sinTheta > 1.0
 
             { state, value: randomNum } = Rnd.float seed
 
             direction = if cannotRefract || (reflectance cosTheta refractionRatio) > randomNum then
-                    Vec3.reflect unitDirection rec.normal
-                else 
-                    Vec3.refract unitDirection rec.normal refractionRatio
+                Vec3.reflect unitDirection rec.normal
+            else
+                Vec3.refract unitDirection rec.normal refractionRatio
 
             scattered = { origin: rec.p, direction }
 
             (Scattered { attenuation: Vec3.one, scattered }, state)
 
-
-reflectance: F32, F32 -> F32
+reflectance : F32, F32 -> F32
 reflectance = \cosine, refractionRatio ->
     r0 = (1.0 - refractionRatio) / (1.0 + refractionRatio)
     r00 = r0 * r0

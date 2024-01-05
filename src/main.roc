@@ -20,15 +20,16 @@ app "raytracer"
     provides [main] to pf
 
 matGround = Material.lambertian (Vec3.new 0.8 0.8 0.0)
-matCenter = Material.dielectric 1.5
+matCenter = Material.lambertian (Vec3.new 0.1 0.2 0.5)
 matLeft = Material.dielectric 1.5
-matRight = Material.metal (Vec3.new 0.8 0.6 0.2) 1.0
+matRight = Material.metal (Vec3.new 0.8 0.6 0.2) 0.0
 
 world : HittableList
 world = [
     { center: Vec3.new 0.0 -100.5 -1.0, radius: 100.0, mat: matGround },
     { center: Vec3.new 0.0 0.0 -1.0, radius: 0.5, mat: matCenter },
     { center: Vec3.new -1.0 0.0 -1.0, radius: 0.5, mat: matLeft },
+    { center: Vec3.new -1.0 0.0 -1.0, radius: -0.4, mat: matLeft },
     { center: Vec3.new 1.0 0.0 -1.0, radius: 0.5, mat: matRight },
 ]
 
