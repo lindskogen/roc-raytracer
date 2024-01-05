@@ -3,7 +3,7 @@ interface Camera
         render,
         init,
     ]
-    imports [Ray.{ Ray }, HittableList.{ HittableList }, Color.{ Color }, Vec3.{ Vec3 }, Output.{ ppm }, Rnd]
+    imports [Ray.{ Ray }, HittableList.{ HittableList }, Color.{ Color }, Vec3.{ Vec3 }, Output.{ ppm }, Rnd, Scatter]
 
 InternalCamera : {
     aspectRatio : F32,
@@ -104,11 +104,13 @@ rayColor = \r, depth, list, seed ->
     else
         when HittableList.hit list r { min: 0.001, max: Num.maxF32 } is
             Hit rec ->
-                { value, state } = Vec3.randomUnit seed
-                direction = Vec3.add rec.normal value
-                (v, newSeed) = rayColor { origin: rec.p, direction } (depth - 1) list state
+                (scatter, state) = Scatter.scatter rec.mat r rec seed
+                when scatter is
+                    Scattered { scattered, attenuation } ->
+                        (v, newSeed) = rayColor scattered (depth - 1) list state
+                        (v |> Vec3.mul attenuation, newSeed)
 
-                (v |> Vec3.scale 0.5, newSeed)
+                    Absorbed -> (Vec3.zero, state)
 
             Miss ->
                 dir = Vec3.unit r.direction

@@ -3,12 +3,12 @@ interface Sphere
         Sphere,
         hit,
     ]
-    imports [Ray.{ Ray }, Vec3.{ Vec3 }, Range, HitRecord.{ HitTest }]
+    imports [Ray.{ Ray }, Vec3.{ Vec3 }, Range, HitRecord.{ HitTest }, Material.{ Material }]
 
-Sphere : { center : Vec3, radius : F32 }
+Sphere : { center : Vec3, radius : F32, mat : Material }
 
 hit : HitTest Sphere
-hit = \{ center, radius }, r, range ->
+hit = \{ center, radius, mat }, r, range ->
     oc = Vec3.sub r.origin center
     a = Vec3.lenSquared r.direction
     halfB = Vec3.dotProduct oc r.direction
@@ -35,4 +35,4 @@ hit = \{ center, radius }, r, range ->
             Root t ->
                 p = Ray.at r t
                 outwardNormal = Vec3.sub p center |> Vec3.div radius
-                Hit (HitRecord.new { t, p, outwardNormal, rayDirection: r.direction })
+                Hit (HitRecord.new { t, p, outwardNormal, rayDirection: r.direction, mat })

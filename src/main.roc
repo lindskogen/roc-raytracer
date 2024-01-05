@@ -13,15 +13,23 @@ app "raytracer"
         Camera,
         Vec3.{ Vec3 },
         HittableList.{ HittableList },
+        Material,
         rand.Random,
         Rnd,
     ]
     provides [main] to pf
 
+matGround = Material.lambertian (Vec3.new 0.8 0.8 0.0)
+matCenter = Material.lambertian (Vec3.new 0.7 0.3 0.3)
+matLeft = Material.metal (Vec3.new 0.8 0.8 0.8) 0.3
+matRight = Material.metal (Vec3.new 0.8 0.6 0.2) 1.0
+
 world : HittableList
 world = [
-    { center: Vec3.new 0.0 0.0 -1.0, radius: 0.5 },
-    { center: Vec3.new 0.0 -100.5 -1.0, radius: 100.0 },
+    { center: Vec3.new 0.0 -100.5 -1.0, radius: 100.0, mat: matGround },
+    { center: Vec3.new 0.0 0.0 -1.0, radius: 0.5, mat: matCenter },
+    { center: Vec3.new -1.0 0.0 -1.0, radius: 0.5, mat: matLeft },
+    { center: Vec3.new 1.0 0.0 -1.0, radius: 0.5, mat: matRight },
 ]
 
 main =

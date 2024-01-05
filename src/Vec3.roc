@@ -12,6 +12,8 @@ interface Vec3
         lenSquared,
         scale,
         div,
+        nearZero,
+        reflect,
         dotProduct,
         crossProduct,
         unit,
@@ -110,6 +112,14 @@ div = \v, t ->
 
 expect div (new 6.0 8.0 10.0) 2.0 == (new 3.0 4.0 5.0)
 
+nearZero : Vec3 -> Bool
+nearZero = \@Vec3 { x, y, z } ->
+    s = 1e-8
+
+    Num.abs x < s && Num.abs y < s && Num.abs z < s
+
+expect nearZero (new 1e-9 1e-9 1e-9) == Bool.true
+
 dotProduct : Vec3, Vec3 -> F32
 dotProduct = \@Vec3 u, @Vec3 v ->
     u.x * v.x + u.y * v.y + u.z * v.z
@@ -131,6 +141,10 @@ unit = \v ->
     div v (len v)
 
 expect unit (new 3.0 4.0 5.0) == (new 1.0 1.0 1.0)
+
+reflect : Vec3, Vec3 -> Vec3
+reflect = \v, n ->
+    Vec3.sub v (Vec3.scale n (Vec3.dotProduct v n) |> Vec3.scale 2.0)
 
 random : Rnd.State -> { value : Vec3, state : Rnd.State }
 random = \seed ->
