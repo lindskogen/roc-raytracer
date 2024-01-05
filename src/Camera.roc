@@ -21,7 +21,10 @@ InternalCamera : {
     pixelDeltaV : Vec3,
     u: Vec3,
     v: Vec3,
-    w: Vec3
+    w: Vec3,
+    defocusDiskU: Vec3,
+    defocusDiskV: Vec3,
+    defocusAngle: F32
 }
 
 degreesToRadians: F32 -> F32
@@ -30,17 +33,16 @@ degreesToRadians = \d ->
 
 Camera := InternalCamera
 
-init : { aspectRatio : F32, imageWidth : U32, samplesPerPixel : U32, maxDepth : U32, vfov: F32, vup: Vec3, lookFrom: Vec3, lookAt: Vec3 } -> Camera
-init = \{ aspectRatio, imageWidth, samplesPerPixel, maxDepth, vfov, lookAt, lookFrom, vup } ->
+init : { aspectRatio : F32, imageWidth : U32, samplesPerPixel : U32, maxDepth : U32, vfov: F32, vup: Vec3, lookFrom: Vec3, lookAt: Vec3, defocusAngle: F32, focusDist: F32 } -> Camera
+init = \{ aspectRatio, imageWidth, samplesPerPixel, maxDepth, vfov, vup, lookFrom, lookAt, defocusAngle, focusDist } ->
     imageHeight =
         Num.floor ((Num.toF32 imageWidth) / aspectRatio)
         |> Num.max 1
 
     center = lookFrom
-    focalLength = Vec3.sub lookFrom lookAt |> Vec3.len
     theta = degreesToRadians vfov
     h = Num.tan (theta / 2.0)
-    viewportHeight = 2.0 * h * focalLength
+    viewportHeight = 2.0 * h * focusDist
     viewportWidth = viewportHeight * ((Num.toF32 imageWidth) / (Num.toF32 imageHeight))
 
     w = Vec3.sub lookFrom lookAt |> Vec3.unit
@@ -55,13 +57,17 @@ init = \{ aspectRatio, imageWidth, samplesPerPixel, maxDepth, vfov, lookAt, look
 
     viewportUpperLeft =
         center
-        |> Vec3.sub (Vec3.scale w focalLength)
+        |> Vec3.sub (Vec3.scale w focusDist)
         |> Vec3.sub (Vec3.div viewportU 2.0)
         |> Vec3.sub (Vec3.div viewportV 2.0)
 
     pixel00Loc = Vec3.add viewportUpperLeft (Vec3.add pixelDeltaU pixelDeltaV |> Vec3.scale 0.5)
 
-    @Camera { aspectRatio, samplesPerPixel, vfov, imageHeight, maxDepth, imageWidth, center, pixel00Loc, pixelDeltaU, pixelDeltaV, w, u, v, vup, lookFrom, lookAt }
+    defocusRadius = focusDist * Num.tan (degreesToRadians (defocusAngle / 2.0))
+    defocusDiskU = Vec3.scale u defocusRadius
+    defocusDiskV = Vec3.scale v defocusRadius
+
+    @Camera { aspectRatio, samplesPerPixel, vfov, imageHeight, maxDepth, imageWidth, center, pixel00Loc, pixelDeltaU, pixelDeltaV, w, u, v, vup, lookFrom, lookAt, defocusDiskU, defocusDiskV, defocusAngle }
 
 pixelSampleSquare : Rnd.State -> (F32, F32, Rnd.State)
 pixelSampleSquare = \seed ->
@@ -73,21 +79,31 @@ pixelSampleSquare = \seed ->
     (px, py, r2.state)
 
 getRay : InternalCamera, U32, U32, Rnd.State -> (Ray, Rnd.State)
-getRay = \{ pixel00Loc, pixelDeltaU, pixelDeltaV, center }, x, y, seed ->
+getRay = \c, x, y, seed ->
     pixelCenter =
-        pixel00Loc
-        |> Vec3.add (Vec3.scale pixelDeltaU (Num.toF32 x))
-        |> Vec3.add (Vec3.scale pixelDeltaV (Num.toF32 y))
+        c.pixel00Loc
+        |> Vec3.add (Vec3.scale c.pixelDeltaU (Num.toF32 x))
+        |> Vec3.add (Vec3.scale c.pixelDeltaV (Num.toF32 y))
 
     (px, py, newSeed) = pixelSampleSquare seed
     pixelSample =
         pixelCenter
-        |> Vec3.add (Vec3.scale pixelDeltaU px)
-        |> Vec3.add (Vec3.scale pixelDeltaV py)
-    origin = center
+        |> Vec3.add (Vec3.scale c.pixelDeltaU px)
+        |> Vec3.add (Vec3.scale c.pixelDeltaV py)
+    (origin, newSeed2) = if c.defocusAngle <= 0.0 then (c.center, newSeed) else defocusDiskSample c newSeed
     direction = Vec3.sub pixelSample origin
 
-    ({ origin, direction }, newSeed)
+    ({ origin, direction }, newSeed2)
+
+defocusDiskSample: InternalCamera, Rnd.State -> (Vec3, Rnd.State)
+defocusDiskSample = \{ defocusDiskU, defocusDiskV, center }, seed ->
+    { value: p, state } = Vec3.randomInUnitDisc seed
+
+    sample = center 
+        |> Vec3.add (Vec3.scale defocusDiskU (Vec3.getX p))
+        |> Vec3.add (Vec3.scale defocusDiskV (Vec3.getY p))
+
+    (sample, state)
 
 samplePixelColor : InternalCamera, U32, Vec3, U32, U32, Rnd.State, (Ray, Rnd.State -> (Vec3, Rnd.State)) -> (Vec3, Rnd.State)
 samplePixelColor = \camera, step, color, x, y, seed, getColor ->

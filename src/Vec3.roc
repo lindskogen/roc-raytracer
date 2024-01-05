@@ -23,6 +23,7 @@ interface Vec3
         getZ,
         randomOnHemisphere,
         randomUnit,
+        randomInUnitDisc,
     ]
     imports [Rnd]
 
@@ -171,15 +172,33 @@ randomInRange = \seed, min, max ->
 
     { value: new r1.value r2.value r3.value, state: r3.state }
 
-randomInUnitSphere : Rnd.State -> { value : Vec3, state : Rnd.State }
-randomInUnitSphere = \seed ->
+randomInUnitDisc : Rnd.State -> { value : Vec3, state : Rnd.State }
+randomInUnitDisc = \seed ->
+    getRandom = \s ->
+        r1 = Rnd.floatInRange s -1.0 1.0
+        r2 = Rnd.floatInRange r1.state -1.0 1.0
+        { value: new r1.value r2.value 0.0, state: r2.state }
+
     recur = \{ value, state } ->
         if lenSquared value < 1 then
             { value, state }
         else
-            recur (randomInRange state -1.0 1.0)
+            recur (getRandom state)
 
-    recur (randomInRange seed -1.0 1.0)
+    recur (getRandom seed)
+
+randomInUnitSphere : Rnd.State -> { value : Vec3, state : Rnd.State }
+randomInUnitSphere = \seed ->
+    getRandom = \s ->
+        randomInRange s -1.0 1.0
+
+    recur = \{ value, state } ->
+        if lenSquared value < 1 then
+            { value, state }
+        else
+            recur (getRandom state)
+
+    recur (getRandom seed)
 
 randomOnHemisphere : Rnd.State, Vec3 -> { value : Vec3, state : Rnd.State }
 randomOnHemisphere = \seed, normal ->

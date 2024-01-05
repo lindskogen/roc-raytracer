@@ -38,7 +38,18 @@ main =
 
     dbg "init"
 
-    camera = Camera.init { aspectRatio: (16.0 / 9.0f32), imageWidth: 400, samplesPerPixel: 100, maxDepth: 50, vfov: 20.0, lookFrom: Vec3.new -2.0 2.0 1.0, lookAt: Vec3.new 0.0 0.0 -1.0, vup: Vec3.new 0.0 1.0 0.0 }
+    camera = Camera.init {
+        aspectRatio: (16.0 / 9.0f32),
+        imageWidth: 400,
+        samplesPerPixel: 100,
+        maxDepth: 50,
+        vfov: 20.0,
+        lookFrom: Vec3.new -2.0 2.0 1.0,
+        lookAt: Vec3.new 0.0 0.0 -1.0,
+        vup: Vec3.new 0.0 1.0 0.0,
+        defocusAngle: 10.0,
+        focusDist: 3.4,
+    }
 
     dbg "render"
 
