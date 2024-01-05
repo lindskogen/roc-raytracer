@@ -1,26 +1,25 @@
 interface Camera
     exposes [
         render,
-        init
+        init,
     ]
-    imports [Ray.{ Ray }, HittableList.{ HittableList }, Color.{ Color }, Vec3.{ Vec3 }, Output.{ ppm }]
+    imports [Ray.{ Ray }, HittableList.{ HittableList }, Color.{ Color }, Vec3.{ Vec3 }, Output.{ ppm }, Rnd]
 
-Camera := {
-    aspectRatio: F32, 
-    imageWidth: U32,
-
-    imageHeight: U32,
-
-    center: Vec3,
-    pixel00Loc: Vec3,
-
-    pixelDeltaU: Vec3,
-    pixelDeltaV: Vec3,
+InternalCamera : {
+    aspectRatio : F32,
+    imageWidth : U32,
+    samplesPerPixel : U32,
+    imageHeight : U32,
+    center : Vec3,
+    pixel00Loc : Vec3,
+    pixelDeltaU : Vec3,
+    pixelDeltaV : Vec3,
 }
 
+Camera := InternalCamera
 
-init: { aspectRatio: F32, imageWidth: U32 } -> Camera
-init = \{ aspectRatio, imageWidth } ->
+init : { aspectRatio : F32, imageWidth : U32, samplesPerPixel : U32 } -> Camera
+init = \{ aspectRatio, imageWidth, samplesPerPixel } ->
     imageHeight =
         Num.floor ((Num.toF32 imageWidth) / aspectRatio)
         |> Num.max 1
@@ -44,33 +43,66 @@ init = \{ aspectRatio, imageWidth } ->
 
     pixel00Loc = Vec3.add viewportUpperLeft (Vec3.add pixelDeltaU pixelDeltaV |> Vec3.scale 0.5)
 
-    @Camera { aspectRatio, imageHeight, imageWidth, center, pixel00Loc, pixelDeltaU, pixelDeltaV }
-    
+    @Camera { aspectRatio, samplesPerPixel, imageHeight, imageWidth, center, pixel00Loc, pixelDeltaU, pixelDeltaV }
 
-render: Camera, HittableList -> List U8
-render = \@Camera { imageHeight, imageWidth, pixel00Loc, pixelDeltaU, pixelDeltaV, center }, world -> 
-    pixels = List.range { start: At 0, end: Before imageHeight }
-        |> List.joinMap \h ->
-            List.range { start: At 0, end: Before imageWidth }
-            |> List.map \w ->
-                pixelCenter =
-                    pixel00Loc
-                    |> Vec3.add (Vec3.scale pixelDeltaU (Num.toF32 w))
-                    |> Vec3.add (Vec3.scale pixelDeltaV (Num.toF32 h))
-                rayDirection = Vec3.sub pixelCenter center
+pixelSampleSquare : Rnd.State -> (F32, F32, Rnd.State)
+pixelSampleSquare = \seed ->
+    r1 = Rnd.float seed
+    r2 = Rnd.float r1.state
+    px = -0.5 + r1.value
+    py = -0.5 + r2.value
 
-                rayColor { origin: center, direction: rayDirection } world
-    
-    ppm imageWidth imageHeight pixels
+    (px, py, r2.state)
 
-rayColor : Ray, HittableList -> Color
+getRay : InternalCamera, U32, U32, Rnd.State -> (Ray, Rnd.State)
+getRay = \{ pixel00Loc, pixelDeltaU, pixelDeltaV, center }, x, y, seed ->
+    pixelCenter =
+        pixel00Loc
+        |> Vec3.add (Vec3.scale pixelDeltaU (Num.toF32 x))
+        |> Vec3.add (Vec3.scale pixelDeltaV (Num.toF32 y))
+
+    (px, py, newSeed) = pixelSampleSquare seed
+    pixelSample =
+        pixelCenter
+        |> Vec3.add (Vec3.scale pixelDeltaU px)
+        |> Vec3.add (Vec3.scale pixelDeltaV py)
+    origin = center
+    direction = Vec3.sub pixelSample origin
+
+    ({ origin, direction }, newSeed)
+
+samplePixelColor : InternalCamera, U32, Vec3, U32, U32, Rnd.State, (Ray -> Vec3) -> (Vec3, Rnd.State)
+samplePixelColor = \camera, step, color, x, y, seed, getColor ->
+    if step == 0 then
+        (color, seed)
+    else
+        (ray, newSeed) = getRay camera x y seed
+        newColor = color |> Vec3.add (getColor ray)
+        samplePixelColor camera (step - 1) newColor x y newSeed getColor
+
+render : Camera, HittableList, Rnd.State -> (List U8, Rnd.State)
+render = \@Camera camera, world, initialSeed ->
+    result =
+        List.range { start: At 0, end: Before camera.imageHeight }
+        |> List.walk { seed: initialSeed, list: [] } \pstate, h ->
+            List.range { start: At 0, end: Before camera.imageWidth }
+            |> List.walk pstate \state, w ->
+                (color, seed) = samplePixelColor camera camera.samplesPerPixel Vec3.zero w h state.seed (\ray -> rayColor ray world)
+
+                c = color |> Color.fromVec3 camera.samplesPerPixel
+
+                { seed, list: List.append state.list c }
+
+    (ppm camera.imageWidth camera.imageHeight result.list, result.seed)
+
+rayColor : Ray, HittableList -> Vec3
 rayColor = \r, list ->
     when HittableList.hit list r { min: 0.0, max: Num.maxF32 } is
         Hit rec ->
-            Vec3.add rec.normal Vec3.one |> Vec3.scale 0.5 |> Color.fromVec3
+            Vec3.add rec.normal Vec3.one |> Vec3.scale 0.5
 
         Miss ->
             dir = Vec3.unit r.direction
             a = 0.5 * ((Vec3.getY dir) + 1.0)
 
-            Vec3.scale Vec3.one (1.0 - a) |> Vec3.add (Vec3.scale (Vec3.new 0.5 0.7 1.0) a) |> Color.fromVec3
+            Vec3.scale Vec3.one (1.0 - a) |> Vec3.add (Vec3.scale (Vec3.new 0.5 0.7 1.0) a)

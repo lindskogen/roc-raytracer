@@ -8,25 +8,28 @@ app "raytracer"
         pf.File,
         pf.Path.{ Path },
         pf.Task,
+        pf.Utc,
         pf.Task.{ Task },
         Camera,
         Vec3.{ Vec3 },
         HittableList.{ HittableList },
+        rand.Random,
+        Rnd,
     ]
     provides [main] to pf
 
-
-world: HittableList
+world : HittableList
 world = [
-    { center: (Vec3.new 0.0 0.0 -1.0), radius: 0.5 },
-    { center: (Vec3.new 0.0 -100.5 -1.0), radius: 100.0 }
+    { center: Vec3.new 0.0 0.0 -1.0, radius: 0.5 },
+    { center: Vec3.new 0.0 -100.5 -1.0, radius: 100.0 },
 ]
 
-
 main =
-    camera = Camera.init { aspectRatio: (16.0 / 9.0f32), imageWidth: 400 }
+    initialSeed <- Rnd.initialize {} |> Task.await
 
-    buffer = Camera.render camera world
+    camera = Camera.init { aspectRatio: (16.0 / 9.0f32), imageWidth: 400, samplesPerPixel: 100 }
+
+    (buffer, _) = Camera.render camera world initialSeed
 
     File.writeBytes (Path.fromStr "out.ppm") buffer
     |> Task.onErr \e ->

@@ -1,21 +1,20 @@
-interface Sphere 
+interface Sphere
     exposes [
         Sphere,
-        hit
+        hit,
     ]
     imports [Ray.{ Ray }, Vec3.{ Vec3 }, Range, HitRecord.{ HitTest }]
 
+Sphere : { center : Vec3, radius : F32 }
 
-Sphere: { center: Vec3, radius: F32 }
-
-hit: HitTest Sphere
+hit : HitTest Sphere
 hit = \{ center, radius }, r, range ->
     oc = Vec3.sub r.origin center
     a = Vec3.lenSquared r.direction
     halfB = Vec3.dotProduct oc r.direction
     c = (Vec3.lenSquared oc) - (radius * radius)
     discriminant = halfB * halfB - a * c
-    
+
     findRootInRange = \{} ->
         sqrtd = Num.sqrt discriminant
         r1 = (-halfB - sqrtd) / a
@@ -25,14 +24,12 @@ hit = \{ center, radius }, r, range ->
             Root r1
         else if Range.surrounds range r2 then
             Root r2
-        else 
+        else
             NoRootWithinRange
-        
-            
 
     if discriminant < 0 then
         Miss
-    else 
+    else
         when findRootInRange {} is
             NoRootWithinRange -> Miss
             Root t ->
