@@ -19,41 +19,73 @@ app "raytracer"
     ]
     provides [main] to pf
 
-matGround = Material.lambertian (Vec3.new 0.8 0.8 0.0)
-matCenter = Material.lambertian (Vec3.new 0.1 0.2 0.5)
-matLeft = Material.dielectric 1.5
-matRight = Material.metal (Vec3.new 0.8 0.6 0.2) 0.0
+matGround = Material.lambertian (Vec3.new 0.5 0.5 0.5)
 
-world : HittableList
-world = [
-    { center: Vec3.new 0.0 -100.5 -1.0, radius: 100.0, mat: matGround },
-    { center: Vec3.new 0.0 0.0 -1.0, radius: 0.5, mat: matCenter },
-    { center: Vec3.new -1.0 0.0 -1.0, radius: 0.5, mat: matLeft },
-    { center: Vec3.new -1.0 0.0 -1.0, radius: -0.4, mat: matLeft },
-    { center: Vec3.new 1.0 0.0 -1.0, radius: 0.5, mat: matRight },
-]
+ground = { center: Vec3.new 0.0 -1000.0 0.0, radius: 1000.0, mat: matGround }
+
+generateWorld = \initialSeed ->
+    range = List.range { start: At -11, end: Before 11 }
+
+    List.walk range { seed: initialSeed, objects: [] } \pstate, a ->
+        List.walk range pstate \state, b ->
+            mat = Rnd.float state.seed
+            xcoord = Rnd.float mat.state
+            ycoord = Rnd.float xcoord.state
+
+            center = Vec3.new ((Num.toF32 a) + 0.9 * xcoord.value) 0.2 ((Num.toF32 b) + 0.9 * ycoord.value)
+
+            if Vec3.sub center (Vec3.new 4.0 0.2 0.0) |> Vec3.len > 0.9 then
+                if mat.value < 0.8 then
+                    { value: albedo1, state: colorState } = Vec3.random ycoord.state
+                    { value: albedo2, state: colorState2 } = Vec3.random colorState
+                    albedo = Vec3.mul albedo1 albedo2
+
+                    object = { center, radius: 0.2, mat: Material.lambertian albedo }
+                    { objects: List.append state.objects object, seed: colorState2 }
+                else if mat.value < 0.95 then
+                    { value: albedo, state: colorState } = Vec3.randomInRange ycoord.state 0.5 1.0
+                    { value: fuzz, state: fuzzState } = Rnd.floatInRange colorState 0.0 0.5
+
+                    object = { center, radius: 0.2, mat: Material.metal albedo fuzz }
+                    { objects: List.append state.objects object, seed: fuzzState }
+                else
+                    object = { center, radius: 0.2, mat: Material.dielectric 1.5 }
+                    { objects: List.append state.objects object, seed: ycoord.state }
+            else
+                { state & seed: ycoord.state }
 
 main =
     initialSeed <- Rnd.initialize {} |> Task.await
+
+    dbg "generate"
+
+    { objects, seed } = generateWorld initialSeed
+
+    world = List.concat objects [
+        ground,
+        { center: Vec3.new 0.0 1.0 0.0, radius: 1.0, mat: Material.dielectric 1.5 },
+        { center: Vec3.new -4.0 1.0 0.0, radius: 1.0, mat: Material.lambertian (Vec3.new 0.4 0.2 0.1) },
+        { center: Vec3.new 4.0 1.0 0.0, radius: 1.0, mat: Material.metal (Vec3.new 0.7 0.6 0.5) 0.0 },
+    ]
 
     dbg "init"
 
     camera = Camera.init {
         aspectRatio: (16.0 / 9.0f32),
-        imageWidth: 400,
-        samplesPerPixel: 100,
+        imageWidth: 1200,
+        samplesPerPixel: 500,
         maxDepth: 50,
         vfov: 20.0,
-        lookFrom: Vec3.new -2.0 2.0 1.0,
-        lookAt: Vec3.new 0.0 0.0 -1.0,
+        lookFrom: Vec3.new 13.0 2.0 3.0,
+        lookAt: Vec3.new 0.0 0.0 0.0,
         vup: Vec3.new 0.0 1.0 0.0,
-        defocusAngle: 10.0,
-        focusDist: 3.4,
+        defocusAngle: 0.6,
+        focusDist: 10.0,
     }
 
     dbg "render"
 
-    (buffer, _) = Camera.render camera world initialSeed
+    (buffer, _) = Camera.render camera world seed
 
     dbg "file write"
 

@@ -22,7 +22,9 @@ interface Vec3
         getY,
         getZ,
         randomOnHemisphere,
+        random,
         randomUnit,
+        randomInRange,
         randomInUnitDisc,
     ]
     imports [Rnd]
